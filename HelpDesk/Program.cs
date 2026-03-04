@@ -1,4 +1,6 @@
 using Application.Abstraction;
+using Application.Common.Authentication;
+using Application.Common.EmailSender;
 using Application.Mapping;
 using Application.Services;
 using Infrastructure;
@@ -68,6 +70,11 @@ builder.Services.AddAuthentication(options =>
 
 builder.Services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
 builder.Services.AddScoped<ITicketRepository, TicketRepository>();
+builder.Services.AddScoped<IUserRepository, UserRepository>();
+
+builder.Services.AddScoped<EmailService>();
+builder.Services.AddScoped<JwtTokenGenerator>();
+builder.Services.AddSingleton<TempLoginSessionService>();
 
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<ICategoryService, CategoryService>();

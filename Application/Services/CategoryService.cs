@@ -29,7 +29,6 @@ namespace Application.Services
             category.Id = Guid.NewGuid();
 
             await _repository.AddAsync(category);
-            await _repository.SaveChangesAsync();
 
             return _mapper.Map<CategoryDto>(category);
         }

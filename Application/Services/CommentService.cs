@@ -43,7 +43,6 @@ namespace Application.Services
             };
 
             await _repository.AddAsync(comment);
-            await _repository.SaveChangesAsync();
 
             return _mapper.Map<CommentResponseDto>(comment);
         }

@@ -1,58 +1,105 @@
 ﻿using Application.Abstraction;
+using Application.Common.Result;
+using Application.Common.Authentication;
 using Application.DTOs.User;
 using AutoMapper;
 using Domain.Entities;
 using Domain.Enums;
 using Infrastructure.Abstraction;
+using Microsoft.Extensions.Logging;
+using Microsoft.AspNetCore.Identity;
 
 namespace Application.Services
 {
     public class AuthService : IAuthService
     {
-        private readonly IRepository<User> _repository;
+        private readonly IUserRepository _repository;
+        private readonly JwtTokenGenerator _tokenGenerator;
+        private readonly ILogger<AuthService> _logger;
         private readonly IMapper _mapper;
 
-        public AuthService(IRepository<User> repository, IMapper mapper)
+        public AuthService(IUserRepository repository, IMapper mapper, JwtTokenGenerator tokenGenerator, ILogger<AuthService> logger)
         {
             _repository = repository;
             _mapper = mapper;
+            _tokenGenerator = tokenGenerator;
+            _logger = logger;
         }
 
-        public async Task<AuthResponseDto> RegisterAsync(RegisterDto dto)
+        public async Task<Result<AuthResponseDto>> RegisterAsync(RegisterDto dto)
         {
-            var user = new User
+            _logger.LogInformation("Регистрация пользователя с логином {Email}", dto.Email);
+
+            var existingUser = await _repository.GetByLoginAsync(dto.Email);
+
+            if (existingUser != null)
             {
-                Id = Guid.NewGuid(),
-                Email = dto.Email,
-                FullName = dto.FullName,
-                PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.Password),
-                Role = UserRole.Client,
-                CreatedAt = DateTime.UtcNow
-            };
+                _logger.LogWarning("Попытка регистрации с уже существующим логином {Email}", dto.Email);
+                return Result<AuthResponseDto>.Fail("Пользователь с таким логином уже существует");
+            }
+
+            var user = _mapper.Map<User>(dto);
 
             await _repository.AddAsync(user);
-            await _repository.SaveChangesAsync();
 
-            return new AuthResponseDto
+            var token = _tokenGenerator.GenerateToken(user);
+
+            _logger.LogInformation("Пользователь {Email} успешно зарегистрирован", dto.Email);
+
+            return Result<AuthResponseDto>.Ok(new AuthResponseDto
             {
-                Token = "stub-token",
+                Token = token,
                 User = _mapper.Map<UserResponseDto>(user)
-            };
+            });
         }
 
-        public async Task<AuthResponseDto> LoginAsync(LoginDto dto)
+        public async Task<Result<UserResponseDto>> AuthenticateAsync(LoginDto loginDto)
         {
-            var users = await _repository.GetAllAsync();
-            var user = users.FirstOrDefault(u => u.Email == dto.Email);
+            _logger.LogInformation("Аутентификация пользователя с логином {Login}", loginDto.Email);
 
-            if (user == null || !BCrypt.Net.BCrypt.Verify(dto.Password, user.PasswordHash))
-                throw new Exception("Invalid credentials");
+            var user = await _repository.GetByLoginAsync(loginDto.Email);
 
-            return new AuthResponseDto
+            if (user == null)
             {
-                Token = "stub-token",
+                _logger.LogWarning("Пользователь с логином {Login} не найден", loginDto.Email);
+                return Result<UserResponseDto>.Fail("Пользователь не найден");
+            }
+            else if (user.IsBlocked)
+            {
+                _logger.LogWarning("Пользователь заблокирован");
+                return Result<UserResponseDto>.Fail("Пользователь заблокирован");
+            }
+            else if (!BCrypt.Net.BCrypt.Verify(loginDto.Password, user.PasswordHash))
+            {
+                _logger.LogWarning("Неверный пароль для пользователя с логином {Login}", loginDto.Email);
+                return Result<UserResponseDto>.Fail("Неверный пароль");
+            }
+
+            _logger.LogInformation("Пользователь с логином {Login} успешно аутентифицирован", loginDto.Email);
+            return Result<UserResponseDto>.Ok(_mapper.Map<UserResponseDto>(user));
+        }
+
+        public async Task<Result<AuthResponseDto>> GenerateToken(Guid userID)
+        {
+            _logger.LogInformation("Генерация токена для пользователя с ID {UserId}", userID);
+
+            var user = await _repository.GetByIdAsync(userID);
+
+            if (user == null)
+            {
+                _logger.LogWarning("Пользователь с ID {UserId} не найден для генерации токена", userID);
+                return Result<AuthResponseDto>.Fail("Пользователь не найден");
+            }
+
+            var token = _tokenGenerator.GenerateToken(user);
+
+            _logger.LogInformation("Токен успешно сгенерирован для пользователя с ID {UserId}", userID);
+
+            return Result<AuthResponseDto>.Ok(new AuthResponseDto
+            {
+                Token = token,
                 User = _mapper.Map<UserResponseDto>(user)
-            };
+            });
         }
     }
 }

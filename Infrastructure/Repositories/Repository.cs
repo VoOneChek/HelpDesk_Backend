@@ -21,15 +21,21 @@ namespace Infrastructure.Repositories
             => await _dbSet.ToListAsync();
 
         public async Task AddAsync(T entity)
-            => await _dbSet.AddAsync(entity);
+        {
+            await _dbSet.AddAsync(entity);
+            await _context.SaveChangesAsync();
+        }
 
-        public void Update(T entity)
-            => _dbSet.Update(entity);
+        public async void Update(T entity) 
+        {
+            _dbSet.Update(entity);
+            await _context.SaveChangesAsync();
+        }
 
-        public void Delete(T entity)
-            => _dbSet.Remove(entity);
-
-        public async Task SaveChangesAsync()
-            => await _context.SaveChangesAsync();
+        public async void Delete(T entity)
+        {
+            _dbSet.Remove(entity);
+            await _context.SaveChangesAsync();
+        }
     }
 }

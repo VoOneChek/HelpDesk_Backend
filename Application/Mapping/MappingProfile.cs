@@ -23,6 +23,22 @@ namespace Application.Mapping
                 .ForMember(dest => dest.Role,
                     opt => opt.MapFrom(src => Enum.Parse<UserRole>(src.Role)));
 
+            //user.Id = Guid.NewGuid();
+            //user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.Password);
+            //user.CreatedAt = DateTime.UtcNow;
+            //user.IsBlocked = false;
+
+            CreateMap<RegisterDto, User>()
+                .ForMember(dest => dest.Id,
+                    opt => opt.MapFrom(src => Guid.NewGuid()))
+                .ForMember(dest => dest.PasswordHash,
+                    opt => opt.MapFrom(src => BCrypt.Net.BCrypt.HashPassword(src.Password)))
+                .ForMember(dest => dest.CreatedAt,
+                    opt => opt.MapFrom(src => DateTime.UtcNow))
+                .ForMember(dest => dest.IsBlocked,
+                    opt => opt.MapFrom(src => false));
+
+
             CreateMap<Category, CategoryDto>();
             CreateMap<CreateCategoryDto, Category>();
 

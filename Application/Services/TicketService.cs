@@ -43,7 +43,6 @@ namespace Application.Services
             };
 
             await _ticketRepository.AddAsync(ticket);
-            await _ticketRepository.SaveChangesAsync();
 
             return _mapper.Map<TicketResponseDto>(ticket);
         }
@@ -69,7 +68,6 @@ namespace Application.Services
             ticket.Status = TicketStatus.InProgress;
 
             _ticketRepository.Update(ticket);
-            await _ticketRepository.SaveChangesAsync();
         }
 
         public async Task ChangeStatusAsync(Guid ticketId, TicketStatus status)
@@ -83,7 +81,6 @@ namespace Application.Services
                 ticket.ClosedAt = DateTime.UtcNow;
 
             _ticketRepository.Update(ticket);
-            await _ticketRepository.SaveChangesAsync();
         }
     }
 }

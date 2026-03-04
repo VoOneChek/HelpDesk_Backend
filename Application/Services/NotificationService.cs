@@ -34,7 +34,6 @@ namespace Application.Services
             notification.IsRead = true;
 
             _repository.Update(notification);
-            await _repository.SaveChangesAsync();
         }
     }
 }

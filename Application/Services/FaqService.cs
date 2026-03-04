@@ -30,7 +30,6 @@ namespace Application.Services
             article.CreatedAt = DateTime.UtcNow;
 
             await _repository.AddAsync(article);
-            await _repository.SaveChangesAsync();
 
             return _mapper.Map<FaqDto>(article);
         }
