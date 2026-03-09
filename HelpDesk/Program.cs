@@ -3,6 +3,7 @@ using Application.Common.Authentication;
 using Application.Common.EmailSender;
 using Application.Mapping;
 using Application.Services;
+using HelpDesk.Controllers.Common;
 using Infrastructure;
 using Infrastructure.Abstraction;
 using Infrastructure.Repositories;
@@ -34,6 +35,21 @@ builder.Services.AddSwaggerGen(options =>
             In = ParameterLocation.Header,
             Description = "Bearer {token}"
         });
+
+        options.AddSecurityRequirement(new OpenApiSecurityRequirement
+        {
+            {
+                new OpenApiSecurityScheme
+                {
+                    Reference = new OpenApiReference
+                    {
+                        Type = ReferenceType.SecurityScheme,
+                        Id = "Bearer"
+                    }
+                },
+                new string[] {}
+            }
+        });
     }
 );
 
@@ -45,6 +61,17 @@ builder.Services.AddAutoMapper(cfg =>
 
 
 var configuration = builder.Configuration;
+
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedFor |
+                               Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedProto |
+                               Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedHost;
+
+    options.KnownNetworks.Clear();
+    options.KnownProxies.Clear();
+});
+
 builder.Services.AddAuthentication(options =>
 {
     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -68,11 +95,16 @@ builder.Services.AddAuthentication(options =>
     };
 });
 
+builder.Services.AddAuthorization();
+builder.Services.AddHttpContextAccessor();
+
 builder.Services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
 builder.Services.AddScoped<ITicketRepository, TicketRepository>();
+builder.Services.AddScoped<ICommentRepository, CommentRepository>();
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 
 builder.Services.AddScoped<EmailService>();
+builder.Services.AddScoped<GetCurrentUser>();
 builder.Services.AddScoped<JwtTokenGenerator>();
 builder.Services.AddSingleton<TempLoginSessionService>();
 
@@ -87,6 +119,8 @@ builder.Services.AddScoped<IReportService, ReportService>();
 
 var app = builder.Build();
 
+app.UseForwardedHeaders();
+
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
@@ -94,11 +128,15 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI(c =>
     {
         c.SwaggerEndpoint("/swagger/v1/swagger.json", "HelpDesk API V1");
+        c.ConfigObject.PersistAuthorization = true;
     });
 }
+else
+{
+    app.UseHttpsRedirection();
+}
 
-app.UseHttpsRedirection();
-
+app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();

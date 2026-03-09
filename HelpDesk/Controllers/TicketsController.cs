@@ -1,6 +1,8 @@
 ﻿using Application.Abstraction;
 using Application.DTOs.Ticket;
+using Application.Services;
 using Domain.Enums;
+using HelpDesk.Controllers.Common;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -12,50 +14,59 @@ namespace HelpDesk.Controllers
     public class TicketsController : ControllerBase
     {
         private readonly ITicketService _service;
+        private readonly GetCurrentUser _currentUser;
 
-        public TicketsController(ITicketService service)
+        public TicketsController(ITicketService service, GetCurrentUser currentUser)
         {
             _service = service;
+            _currentUser = currentUser;
         }
 
-        // POST: api/tickets
         [HttpPost]
-        public async Task<IActionResult> Create(CreateTicketDto dto)
+        public async Task<IActionResult> Create([FromBody] CreateTicketDto dto)
         {
-            var userId = Guid.Parse(User.FindFirst("id")!.Value);
-            return Ok(await _service.CreateTicketAsync(userId, dto));
+            var userId = _currentUser.GetCurrentUserId(User);
+            var result = await _service.CreateTicketAsync(userId, dto);
+
+            if (!result.Success)
+                return BadRequest(new { error = result.Error });
+
+            return Ok(result.Data);
         }
 
-        // GET: api/tickets/my (для клиента)
         [HttpGet("my")]
-        public async Task<IActionResult> MyTickets()
+        public async Task<IActionResult> GetMyTickets()
         {
-            var userId = Guid.Parse(User.FindFirst("id")!.Value);
-            return Ok(await _service.GetClientTicketsAsync(userId));
+            var userId = _currentUser.GetCurrentUserId(User);
+            var result = await _service.GetClientTicketsAsync(userId);
+
+            return Ok(result.Data);
         }
 
-        // GET: api/tickets (оператор / админ)
-        [Authorize(Roles = "Operator,Admin")]
         [HttpGet]
+        [Authorize(Roles = "Operator, Admin")] 
         public async Task<IActionResult> GetAll()
-            => Ok(await _service.GetAllAsync());
-
-        // PUT: api/tickets/{id}/assign/{operatorId}
-        [Authorize(Roles = "Operator,Admin")]
-        [HttpPut("{id}/assign/{operatorId}")]
-        public async Task<IActionResult> Assign(Guid id, Guid operatorId)
         {
-            await _service.AssignOperatorAsync(id, operatorId);
-            return NoContent();
+            var result = await _service.GetAllAsync();
+            return Ok(result.Data);
         }
 
-        // PUT: api/tickets/{id}/status
-        [Authorize(Roles = "Operator,Admin")]
-        [HttpPut("{id}/status")]
-        public async Task<IActionResult> ChangeStatus(Guid id, TicketStatus status)
+        [HttpPut("{id}/assign")]
+        [Authorize(Roles = "Operator, Admin")]
+        public async Task<IActionResult> AssignOperator(Guid id, [FromBody] Guid operatorId)
         {
-            await _service.ChangeStatusAsync(id, status);
-            return NoContent();
+            var result = await _service.AssignOperatorAsync(id, operatorId);
+            if (!result.Success) return BadRequest(new { error = result.Error });
+            return Ok();
+        }
+
+        [HttpPut("{id}/status")]
+        [Authorize(Roles = "Operator, Admin")]
+        public async Task<IActionResult> ChangeStatus(Guid id, [FromBody] TicketStatus status)
+        {
+            var result = await _service.ChangeStatusAsync(id, status);
+            if (!result.Success) return BadRequest(new { error = result.Error });
+            return Ok();
         }
     }
 }

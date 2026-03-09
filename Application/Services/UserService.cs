@@ -23,10 +23,10 @@ namespace Application.Services
             _logger = logger;
         }
 
-        public async Task<IEnumerable<UserResponseDto>> GetAllAsync()
+        public async Task<Result<IEnumerable<UserResponseDto>>> GetAllAsync()
         {
             var users = await _repository.GetAllAsync();
-            return _mapper.Map<IEnumerable<UserResponseDto>>(users);
+            return Result<IEnumerable<UserResponseDto>>.Ok(_mapper.Map<IEnumerable<UserResponseDto>>(users));
         }
 
         public async Task<Result<UserResponseDto>> GetCurrentUserAsync(Guid userId)
@@ -45,28 +45,33 @@ namespace Application.Services
             return Result<UserResponseDto>.Ok(_mapper.Map<UserResponseDto>(user));
         }
 
-        public async Task<UserResponseDto> CreateAsync(CreateUserDto dto)
+        public async Task<Result<UserResponseDto>> UpdateProfileAsync(Guid userId, UpdateProfileDto dto)
         {
-            var user = _mapper.Map<User>(dto);
+            var user = await _repository.GetByIdAsync(userId);
 
-            user.Id = Guid.NewGuid();
-            user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.Password);
-            user.CreatedAt = DateTime.UtcNow;
-            user.IsBlocked = false;
+            if (user == null)
+            {
+                return Result<UserResponseDto>.Fail("Пользователь не найден");
+            }
 
-            await _repository.AddAsync(user);
+            user.FullName = dto.FullName;
 
-            return _mapper.Map<UserResponseDto>(user);
+            await _repository.Update(user);
+
+            _logger.LogInformation("Профиль пользователя {UserId} успешно обновлен", userId);
+            return Result<UserResponseDto>.Ok(_mapper.Map<UserResponseDto>(user));
         }
 
-        public async Task BlockUserAsync(Guid userId)
+        public async Task<Result> SwitchBlockUserAsync(Guid userId)
         {
-            var user = await _repository.GetByIdAsync(userId)
-                       ?? throw new Exception("User not found");
+            var user = await _repository.GetByIdAsync(userId);
+            if (user == null)
+                return Result.Fail("User not found");
 
-            user.IsBlocked = true;
+            user.IsBlocked = !user.IsBlocked;
+            await _repository.Update(user);
 
-            _repository.Update(user);
+            return Result.Ok();
         }
     }
 }

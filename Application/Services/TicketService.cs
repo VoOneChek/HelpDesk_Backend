@@ -1,4 +1,5 @@
 ﻿using Application.Abstraction;
+using Application.Common.Result;
 using Application.DTOs.Ticket;
 using Application.DTOs.User;
 using AutoMapper;
@@ -6,6 +7,7 @@ using Domain.Entities;
 using Domain.Enums;
 using Infrastructure.Abstraction;
 using Infrastructure.Repositories;
+using System.Threading.Tasks;
 
 namespace Application.Services
 {
@@ -28,7 +30,7 @@ namespace Application.Services
             _mapper = mapper;
         }
 
-        public async Task<TicketResponseDto> CreateTicketAsync(Guid clientId, CreateTicketDto dto)
+        public async Task<Result<TicketResponseDto>> CreateTicketAsync(Guid clientId, CreateTicketDto dto)
         {
             var ticket = new Ticket
             {
@@ -44,43 +46,50 @@ namespace Application.Services
 
             await _ticketRepository.AddAsync(ticket);
 
-            return _mapper.Map<TicketResponseDto>(ticket);
+            var createdTicket = await _ticketRepository.GetWithDetailsByIdAsync(ticket.Id);
+            return Result<TicketResponseDto>.Ok(_mapper.Map<TicketResponseDto>(createdTicket));
         }
 
-        public async Task<IEnumerable<TicketResponseDto>> GetAllAsync()
+        public async Task<Result<IEnumerable<TicketResponseDto>>> GetAllAsync()
         {
-            var tickets = await _ticketRepository.GetAllAsync();
-            return _mapper.Map<IEnumerable<TicketResponseDto>>(tickets);
+            var tickets = await _ticketRepository.GetAllWithDetailsAsync();
+            return Result<IEnumerable<TicketResponseDto>>.Ok(_mapper.Map<IEnumerable<TicketResponseDto>>(tickets));
         }
 
-        public async Task<IEnumerable<TicketResponseDto>> GetClientTicketsAsync(Guid clientId)
+        public async Task<Result<IEnumerable<TicketResponseDto>>> GetClientTicketsAsync(Guid clientId)
         {
             var tickets = await _ticketRepository.GetByClientIdAsync(clientId);
-            return _mapper.Map<IEnumerable<TicketResponseDto>>(tickets);
+            return Result<IEnumerable<TicketResponseDto>>.Ok(_mapper.Map<IEnumerable<TicketResponseDto>>(tickets));
         }
 
-        public async Task AssignOperatorAsync(Guid ticketId, Guid operatorId)
+        public async Task<Result> AssignOperatorAsync(Guid ticketId, Guid operatorId)
         {
-            var ticket = await _ticketRepository.GetByIdAsync(ticketId)
-                         ?? throw new Exception("Ticket not found");
+            var ticket = await _ticketRepository.GetByIdAsync(ticketId);
+
+            if (ticket == null)
+                return Result.Fail("Обращение не найдено");
 
             ticket.OperatorId = operatorId;
             ticket.Status = TicketStatus.InProgress;
 
-            _ticketRepository.Update(ticket);
+            await _ticketRepository.Update(ticket);
+            return Result.Ok();
         }
 
-        public async Task ChangeStatusAsync(Guid ticketId, TicketStatus status)
+        public async Task<Result> ChangeStatusAsync(Guid ticketId, TicketStatus status)
         {
-            var ticket = await _ticketRepository.GetByIdAsync(ticketId)
-                         ?? throw new Exception("Ticket not found");
+            var ticket = await _ticketRepository.GetByIdAsync(ticketId);
+
+            if (ticket == null) 
+                return Result.Fail("Обращение не найдено");
 
             ticket.Status = status;
 
             if (status == TicketStatus.Closed)
                 ticket.ClosedAt = DateTime.UtcNow;
 
-            _ticketRepository.Update(ticket);
+            await _ticketRepository.Update(ticket);
+            return Result.Ok();
         }
     }
 }

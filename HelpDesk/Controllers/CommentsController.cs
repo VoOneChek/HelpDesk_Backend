@@ -1,5 +1,7 @@
 ﻿using Application.Abstraction;
 using Application.DTOs.Comment;
+using Application.Services;
+using HelpDesk.Controllers.Common;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -11,23 +13,34 @@ namespace HelpDesk.Controllers
     public class CommentsController : ControllerBase
     {
         private readonly ICommentService _service;
+        private readonly GetCurrentUser _currentUser;
 
-        public CommentsController(ICommentService service)
+        public CommentsController(ICommentService service, GetCurrentUser currentUser)
         {
             _service = service;
+            _currentUser = currentUser;
         }
 
-        // POST: api/tickets/{ticketId}/comments
-        [HttpPost]
-        public async Task<IActionResult> Add(Guid ticketId, CreateCommentDto dto)
-        {
-            var userId = Guid.Parse(User.FindFirst("id")!.Value);
-            return Ok(await _service.AddCommentAsync(ticketId, userId, dto));
-        }
-
-        // GET: api/tickets/{ticketId}/comments
         [HttpGet]
-        public async Task<IActionResult> Get(Guid ticketId)
-            => Ok(await _service.GetTicketCommentsAsync(ticketId));
+        public async Task<IActionResult> GetComments(Guid ticketId)
+        {
+            var result = await _service.GetTicketCommentsAsync(ticketId);
+            if (!result.Success)
+                return BadRequest(new { error = result.Error });
+
+            return Ok(result.Data);
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> AddComment(Guid ticketId, [FromBody] CreateCommentDto dto)
+        {
+            var userId = _currentUser.GetCurrentUserId(User);
+            var result = await _service.AddCommentAsync(ticketId, userId, dto);
+
+            if (!result.Success)
+                return BadRequest(new { error = result.Error });
+
+            return Ok(result.Data);
+        }
     }
 }

@@ -1,4 +1,5 @@
 ﻿using Application.Abstraction;
+using Application.Common.Result;
 using Application.DTOs.Comment;
 using AutoMapper;
 using Domain.Entities;
@@ -25,7 +26,7 @@ namespace Application.Services
             _mapper = mapper;
         }
 
-        public async Task<CommentResponseDto> AddCommentAsync(Guid ticketId, Guid authorId, CreateCommentDto dto)
+        public async Task<Result<CommentResponseDto>> AddCommentAsync(Guid ticketId, Guid authorId, CreateCommentDto dto)
         {
             var ticket = await _ticketRepository.GetByIdAsync(ticketId)
                          ?? throw new Exception("Ticket not found");
@@ -44,15 +45,15 @@ namespace Application.Services
 
             await _repository.AddAsync(comment);
 
-            return _mapper.Map<CommentResponseDto>(comment);
+            return Result<CommentResponseDto>.Ok(_mapper.Map<CommentResponseDto>(comment));
         }
 
-        public async Task<IEnumerable<CommentResponseDto>> GetTicketCommentsAsync(Guid ticketId)
+        public async Task<Result<IEnumerable<CommentResponseDto>>> GetTicketCommentsAsync(Guid ticketId)
         {
             var comments = (await _repository.GetAllAsync())
                 .Where(c => c.TicketId == ticketId);
 
-            return _mapper.Map<IEnumerable<CommentResponseDto>>(comments);
+            return Result<IEnumerable<CommentResponseDto>>.Ok(_mapper.Map<IEnumerable<CommentResponseDto>>(comments));
         }
     }
 }

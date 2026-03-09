@@ -10,12 +10,12 @@ namespace Application.DTOs.User
         public bool IsBlocked { get; set; }
     }
 
-    public class CreateUserDto
+    public class UpdateProfileDto
     {
-        public string Email { get; set; } = null!;
-        public string Password { get; set; } = null!;
         public string FullName { get; set; } = null!;
-        public string Role { get; set; } = null!;
+
+        // Если клиенту можно менять почту, добавляем сюда, но потребуется проверка на уникальность
+        // public string Email { get; set; } = null!; 
     }
 
     public class RegisterDto

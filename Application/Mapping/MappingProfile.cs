@@ -19,14 +19,7 @@ namespace Application.Mapping
                 .ForMember(dest => dest.Role,
                     opt => opt.MapFrom(src => src.Role.ToString()));
 
-            CreateMap<CreateUserDto, User>()
-                .ForMember(dest => dest.Role,
-                    opt => opt.MapFrom(src => Enum.Parse<UserRole>(src.Role)));
-
-            //user.Id = Guid.NewGuid();
-            //user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.Password);
-            //user.CreatedAt = DateTime.UtcNow;
-            //user.IsBlocked = false;
+            CreateMap<UpdateProfileDto, User>();
 
             CreateMap<RegisterDto, User>()
                 .ForMember(dest => dest.Id,

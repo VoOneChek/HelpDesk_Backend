@@ -10,20 +10,34 @@ namespace Infrastructure.Repositories
         {
         }
 
+        public async Task<IEnumerable<Ticket>> GetAllWithDetailsAsync()
+        {
+            return await _context.Tickets
+                .Include(t => t.Category)
+                .Include(t => t.Client)
+                .Include(t => t.Operator)
+                .ToListAsync();
+        }
+
         public async Task<IEnumerable<Ticket>> GetByClientIdAsync(Guid clientId)
         {
             return await _context.Tickets
                 .Include(t => t.Category)
+                .Include(t => t.Client)
+                .Include(t => t.Operator)
                 .Where(t => t.ClientId == clientId)
                 .ToListAsync();
         }
 
-        public async Task<IEnumerable<Ticket>> GetByOperatorIdAsync(Guid operatorId)
+        public async Task<Ticket?> GetWithDetailsByIdAsync(Guid id)
         {
             return await _context.Tickets
                 .Include(t => t.Category)
-                .Where(t => t.OperatorId == operatorId)
-                .ToListAsync();
+                .Include(t => t.Client)
+                .Include(t => t.Operator)
+                .Include(t => t.Comments)
+                    .ThenInclude(c => c.Author)
+                .FirstOrDefaultAsync(t => t.Id == id);
         }
     }
 }
