@@ -42,4 +42,26 @@ namespace Application.DTOs.User
         public string Token { get; set; } = null!;
         public UserResponseDto? User { get; set; } = null;
     }
+
+    public class AdminCreateUserDto
+    {
+        public string Email { get; set; } = null!;
+        public string Password { get; set; } = null!;
+        public string FullName { get; set; } = null!;
+        public string Role { get; set; } = null!;
+    }
+
+    public class AdminUpdateUserDto
+    {
+        public string FullName { get; set; } = null!;
+        public string Email { get; set; } = null!;
+        public string Role { get; set; } = null!;
+    }
+
+    public class OperatorStatsDto
+    {
+        public int TotalAssigned { get; set; }
+        public int ClosedTotal { get; set; }
+        public int ClosedToday { get; set; }
+    }
 }

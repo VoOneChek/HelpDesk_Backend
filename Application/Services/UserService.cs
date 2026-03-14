@@ -3,6 +3,7 @@ using Application.Common.Result;
 using Application.DTOs.User;
 using AutoMapper;
 using Domain.Entities;
+using Domain.Enums;
 using Infrastructure.Abstraction;
 using Microsoft.Extensions.Logging;
 using System;
@@ -12,11 +13,11 @@ namespace Application.Services
 {
     public class UserService : IUserService
     {
-        private readonly IRepository<User> _repository;
+        private readonly IUserRepository _repository;
         private readonly ILogger<UserService> _logger;
         private readonly IMapper _mapper;
 
-        public UserService(IRepository<User> repository, IMapper mapper, ILogger<UserService> logger)
+        public UserService(IUserRepository repository, IMapper mapper, ILogger<UserService> logger)
         {
             _repository = repository;
             _mapper = mapper;
@@ -71,7 +72,39 @@ namespace Application.Services
             user.IsBlocked = !user.IsBlocked;
             await _repository.Update(user);
 
+            _logger.LogInformation("Пользователь {UserId} был {Status}", userId, user.IsBlocked ? "заблокирован" : "разблокирован");
             return Result.Ok();
+        }
+
+        public async Task<Result<UserResponseDto>> CreateUserAsync(AdminCreateUserDto dto)
+        {
+            var existingUser = await _repository.GetByLoginAsync(dto.Email);
+            if (existingUser != null)
+                return Result<UserResponseDto>.Fail("Пользователь с таким email уже существует");
+
+            var user = _mapper.Map<User>(dto);
+
+            await _repository.AddAsync(user);
+            return Result<UserResponseDto>.Ok(_mapper.Map<UserResponseDto>(user));
+        }
+
+        public async Task<Result<UserResponseDto>> UpdateUserAsync(Guid userId, AdminUpdateUserDto dto)
+        {
+            var user = await _repository.GetByIdAsync(userId);
+            if (user == null) return Result<UserResponseDto>.Fail("Пользователь не найден");
+
+            if (user.Email != dto.Email)
+            {
+                var checkEmail = await _repository.GetByLoginAsync(dto.Email);
+                if (checkEmail != null) return Result<UserResponseDto>.Fail("Email уже занят");
+            }
+
+            user.FullName = dto.FullName;
+            user.Email = dto.Email;
+            user.Role = Enum.Parse<UserRole>(dto.Role);
+
+            await _repository.Update(user);
+            return Result<UserResponseDto>.Ok(_mapper.Map<UserResponseDto>(user));
         }
     }
 }

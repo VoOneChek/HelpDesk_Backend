@@ -21,9 +21,31 @@ namespace HelpDesk.Controllers
             _currentUser = currentUser;
         }
 
-        [HttpGet]
-        public async Task<IActionResult> GetAll()
-            => Ok(await _userService.GetAllAsync());
+        [HttpGet("all")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> GetAllUsers()
+        {
+            var result = await _userService.GetAllAsync();
+            return Ok(result.Data);
+        }
+
+        [HttpPost("create")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> CreateUser([FromBody] AdminCreateUserDto dto)
+        {
+            var result = await _userService.CreateUserAsync(dto);
+            if (!result.Success) return BadRequest(new { error = result.Error });
+            return Ok(result.Data);
+        }
+
+        [HttpPut("{id}/update")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> UpdateUser(Guid id, [FromBody] AdminUpdateUserDto dto)
+        {
+            var result = await _userService.UpdateUserAsync(id, dto);
+            if (!result.Success) return BadRequest(new { error = result.Error });
+            return Ok(result.Data);
+        }
 
         [HttpGet("profile")]
         public async Task<IActionResult> GetProfile()
@@ -50,6 +72,7 @@ namespace HelpDesk.Controllers
         }
 
         [HttpPut("{id}/switchBlock")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> SwitchBlock(Guid id)
         {
             await _userService.SwitchBlockUserAsync(id);

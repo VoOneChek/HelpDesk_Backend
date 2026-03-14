@@ -1,6 +1,7 @@
 using Application.Abstraction;
 using Application.Common.Authentication;
 using Application.Common.EmailSender;
+using Application.Common.GenerateReportFile;
 using Application.Mapping;
 using Application.Services;
 using HelpDesk.Controllers.Common;
@@ -105,6 +106,8 @@ builder.Services.AddScoped<IUserRepository, UserRepository>();
 
 builder.Services.AddScoped<EmailService>();
 builder.Services.AddScoped<GetCurrentUser>();
+builder.Services.AddScoped<GenerateCsvFile>();
+builder.Services.AddScoped<GenerateExcelFile>();
 builder.Services.AddScoped<JwtTokenGenerator>();
 builder.Services.AddSingleton<TempLoginSessionService>();
 

@@ -13,4 +13,10 @@ namespace Application.DTOs.Category
         public string Name { get; set; } = null!;
         public string? Description { get; set; }
     }
+
+    public class UpdateCategoryDto
+    {
+        public string Name { get; set; } = null!;
+        public string? Description { get; set; }
+    }
 }

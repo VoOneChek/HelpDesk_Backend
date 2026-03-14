@@ -1,5 +1,5 @@
 ﻿using Application.Common.Result;
-using Application.DTOs.Report;
+using Application.DTOs.User;
 using Application.DTOs.Ticket;
 using Domain.Enums;
 

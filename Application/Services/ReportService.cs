@@ -1,5 +1,8 @@
 ﻿using Application.Abstraction;
+using Application.Common.Result;
+using Application.Common.GenerateReportFile;
 using Application.DTOs.Report;
+using AutoMapper;
 using Domain.Entities;
 using Domain.Enums;
 using Infrastructure.Abstraction;
@@ -8,45 +11,119 @@ namespace Application.Services
 {
     public class ReportService : IReportService
     {
-        private readonly IRepository<Ticket> _repository;
+        private readonly ITicketRepository _repository;
+        private readonly IMapper _mapper;
+        private readonly GenerateExcelFile generateExcelFile;
+        private readonly GenerateCsvFile generateCsvFile;
 
-        public ReportService(IRepository<Ticket> repository)
+        public ReportService(ITicketRepository repository, IMapper mapper, GenerateExcelFile generateExcelFile, GenerateCsvFile generateCsvFile)
         {
             _repository = repository;
+            _mapper = mapper;
+            this.generateExcelFile = generateExcelFile;
+            this.generateCsvFile = generateCsvFile;
         }
 
-        public async Task<TicketReportDto> GetTicketReportAsync(DateTime from, DateTime to)
+        public async Task<Result<IEnumerable<ReportItemDto>>> GetReportAsync(ReportFilterDto filter)
         {
-            var tickets = (await _repository.GetAllAsync())
-                .Where(t => t.CreatedAt >= from && t.CreatedAt <= to)
-                .ToList();
+            if (filter.From == default || filter.To == default)
+                return Result<IEnumerable<ReportItemDto>>.Fail("Необходимо указать период (From и To)");
 
-            return new TicketReportDto
-            {
-                TotalTickets = tickets.Count,
-                ClosedTickets = tickets.Count(t => t.Status == TicketStatus.Closed),
-                OpenTickets = tickets.Count(t => t.Status != TicketStatus.Closed)
-            };
+            var tickets = await _repository.GetAllWithDetailsAsync(
+                filter.Status,
+                filter.CategoryId,
+                filter.From,
+                filter.To,
+                null
+            );
+
+            return Result<IEnumerable<ReportItemDto>>.Ok(_mapper.Map<IEnumerable<ReportItemDto>>(tickets));
         }
 
-        public async Task<AnalyticsDto> GetAnalyticsAsync()
+        public async Task<Result<(byte[] FileBytes, string FileName, string ContentType)>> ExportReportAsync(ReportFilterDto filter, string format)
         {
-            var tickets = (await _repository.GetAllAsync())
-                .Where(t => t.ClosedAt != null)
-                .ToList();
+            // 1. Получаем данные
+            var tickets = await _repository.GetAllWithDetailsAsync(
+                filter.Status,
+                filter.CategoryId,
+                filter.From,
+                filter.To,
+                null
+            );
 
-            double avg = 0;
+            var ticketList = tickets.ToList();
 
-            if (tickets.Any())
+            // 2. Считаем статистику
+            var summary = CalculateSummary(ticketList);
+            var details = _mapper.Map<List<ReportItemDto>>(ticketList);
+
+            foreach (var detail in details)
             {
-                avg = tickets.Average(t =>
-                    (t.ClosedAt!.Value - t.CreatedAt).TotalHours);
+                var ticket = ticketList.First(t => t.Id == detail.TicketId);
+                if (ticket.ClosedAt.HasValue)
+                {
+                    var duration = ticket.ClosedAt.Value - ticket.CreatedAt;
+                    detail.ResolutionTime = $"{Math.Floor(duration.TotalHours)} ч. {duration.Minutes} мин.";
+                }
+                else
+                {
+                    detail.ResolutionTime = "-";
+                }
             }
 
-            return new AnalyticsDto
+            // 3. Генерация файла
+            string fileName;
+            string contentType;
+            byte[] bytes;
+            string dateSuffix = $"_{DateTime.Now:yyyyMMdd_HHmm}";
+
+            if (format.Equals("excel", StringComparison.OrdinalIgnoreCase))
             {
-                AverageResponseTimeHours = avg,
-                ClosedTickets = tickets.Count
+                fileName = $"Report{dateSuffix}.xlsx";
+                contentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+                bytes = generateExcelFile.GenerateExcelWithStats(summary, details);
+            }
+            else // CSV
+            {
+                fileName = $"Report{dateSuffix}.csv";
+                contentType = "text/csv";
+                bytes = generateCsvFile.GenerateCsv(details);
+            }
+
+            return Result<(byte[] FileBytes, string FileName, string ContentType)>.Ok((bytes, fileName, contentType));
+        }
+
+        // Метод подсчета статистики
+        private ReportSummaryDto CalculateSummary(List<Ticket> tickets)
+        {
+            var closedTickets = tickets.Where(t => t.Status == TicketStatus.Closed && t.ClosedAt.HasValue).ToList();
+
+            string avgTime = "-";
+            if (closedTickets.Any())
+            {
+                var totalSeconds = closedTickets.Average(t => (t.ClosedAt!.Value - t.CreatedAt).TotalSeconds);
+                var span = TimeSpan.FromSeconds(totalSeconds);
+                avgTime = $"{Math.Floor(span.TotalDays)} дн. {span.Hours} ч.";
+            }
+
+            return new ReportSummaryDto
+            {
+                TotalTickets = tickets.Count,
+                ClosedTickets = closedTickets.Count,
+                OpenTickets = tickets.Count(t => t.Status != TicketStatus.Closed),
+                AverageResolutionTime = avgTime,
+                TopCategories = tickets
+                    .GroupBy(t => t.Category.Name)
+                    .Select(g => new CategoryStatsDto { CategoryName = g.Key, Count = g.Count() })
+                    .OrderByDescending(g => g.Count)
+                    .Take(5)
+                    .ToList(),
+                OperatorPerformance = tickets
+                    .Where(t => t.Operator != null && t.Status == TicketStatus.Closed)
+                    .GroupBy(t => t.Operator!.FullName)
+                    .Select(g => new OperatorStatsDto { OperatorName = g.Key, ClosedCount = g.Count() })
+                    .OrderByDescending(g => g.ClosedCount)
+                    .ToList()
             };
         }
     }

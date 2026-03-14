@@ -2,6 +2,7 @@
 using Application.DTOs.Comment;
 using Application.DTOs.Faq;
 using Application.DTOs.Notification;
+using Application.DTOs.Report;
 using Application.DTOs.Ticket;
 using Application.DTOs.TicketHistory;
 using Application.DTOs.User;
@@ -59,6 +60,26 @@ namespace Application.Mapping
             CreateMap<CreateFaqDto, FaqArticle>();
 
             CreateMap<Notification, NotificationDto>();
+
+            CreateMap<Ticket, ReportItemDto>()
+                .ForMember(dest => dest.TicketId, opt => opt.MapFrom(src => src.Id))
+                .ForMember(dest => dest.Status, opt => opt.MapFrom(src => src.Status.ToString()))
+                .ForMember(dest => dest.Priority, opt => opt.MapFrom(src => src.Priority.ToString()))
+                .ForMember(dest => dest.CategoryName, opt => opt.MapFrom(src => src.Category.Name))
+                .ForMember(dest => dest.ClientName, opt => opt.MapFrom(src => src.Client.FullName))
+                .ForMember(dest => dest.OperatorName, opt => opt.MapFrom(src => src.Operator != null ? src.Operator.FullName : null))
+                .ForMember(dest => dest.ResolutionTime, opt => opt.Ignore());
+
+            CreateMap<UpdateCategoryDto, Category>();
+
+            CreateMap<AdminCreateUserDto, User>()
+                .ForMember(dest => dest.Id, opt => opt.MapFrom(src => Guid.NewGuid()))
+                .ForMember(dest => dest.PasswordHash, opt => opt.MapFrom(src => BCrypt.Net.BCrypt.HashPassword(src.Password)))
+                .ForMember(dest => dest.CreatedAt, opt => opt.MapFrom(src => DateTime.UtcNow))
+                .ForMember(dest => dest.IsBlocked, opt => opt.MapFrom(src => false))
+                .ForMember(dest => dest.Role, opt => opt.MapFrom(src => Enum.Parse<UserRole>(src.Role)));
+
+
         }
     }
 }

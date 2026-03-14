@@ -21,5 +21,20 @@ namespace Application.Abstraction
         /// Изменение статуса блокировки пользователя
         /// </summary>
         Task<Result> SwitchBlockUserAsync(Guid userId);
+
+        /// <summary>
+        /// Создание пользователя администратором
+        /// </summary>
+        /// <param name="dto"></param>
+        /// <returns></returns>
+        Task<Result<UserResponseDto>> CreateUserAsync(AdminCreateUserDto dto);
+
+        /// <summary>
+        /// Обновление данных администратором
+        /// </summary>
+        /// <param name="userId"></param>
+        /// <param name="dto"></param>
+        /// <returns></returns>
+        Task<Result<UserResponseDto>> UpdateUserAsync(Guid userId, AdminUpdateUserDto dto);
     }
 }

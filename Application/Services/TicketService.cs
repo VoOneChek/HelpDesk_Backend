@@ -1,14 +1,11 @@
 ﻿using Application.Abstraction;
 using Application.Common.Result;
-using Application.DTOs.Report;
 using Application.DTOs.Ticket;
 using Application.DTOs.User;
 using AutoMapper;
 using Domain.Entities;
 using Domain.Enums;
 using Infrastructure.Abstraction;
-using Infrastructure.Repositories;
-using System.Threading.Tasks;
 
 namespace Application.Services
 {
