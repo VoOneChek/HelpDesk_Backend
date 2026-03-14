@@ -1,5 +1,6 @@
 ﻿using Application.Abstraction;
 using Application.Common.Result;
+using Application.DTOs.Report;
 using Application.DTOs.Ticket;
 using Application.DTOs.User;
 using AutoMapper;
@@ -50,9 +51,15 @@ namespace Application.Services
             return Result<TicketResponseDto>.Ok(_mapper.Map<TicketResponseDto>(createdTicket));
         }
 
-        public async Task<Result<IEnumerable<TicketResponseDto>>> GetAllAsync()
+        public async Task<Result<IEnumerable<TicketResponseDto>>> GetAllAsync(TicketFilterDto filter)
         {
-            var tickets = await _ticketRepository.GetAllWithDetailsAsync();
+            var tickets = await _ticketRepository.GetAllWithDetailsAsync(
+                filter.Status,
+                filter.CategoryId,
+                filter.From,
+                filter.To,
+                filter.SearchString
+            );
             return Result<IEnumerable<TicketResponseDto>>.Ok(_mapper.Map<IEnumerable<TicketResponseDto>>(tickets));
         }
 
@@ -90,6 +97,24 @@ namespace Application.Services
 
             await _ticketRepository.Update(ticket);
             return Result.Ok();
+        }
+
+        public async Task<Result<OperatorStatsDto>> GetOperatorStatsAsync(Guid operatorId)
+        {
+            var inProgressCount = await _ticketRepository.CountByOperatorAsync(operatorId, TicketStatus.InProgress);
+            var newAssignedCount = await _ticketRepository.CountByOperatorAsync(operatorId, TicketStatus.New);
+
+            var closedTotal = await _ticketRepository.CountByOperatorAsync(operatorId, TicketStatus.Closed);
+
+            var today = DateTime.UtcNow.Date;
+            var closedToday = await _ticketRepository.CountByOperatorAsync(operatorId, TicketStatus.Closed, today, today.AddDays(1));
+
+            return Result<OperatorStatsDto>.Ok(new OperatorStatsDto
+            {
+                TotalAssigned = inProgressCount + newAssignedCount,
+                ClosedTotal = closedTotal,
+                ClosedToday = closedToday
+            });
         }
     }
 }

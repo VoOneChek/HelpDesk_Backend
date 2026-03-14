@@ -24,4 +24,13 @@ namespace Application.DTOs.Ticket
 
         public string CategoryName { get; set; } = null!;
     }
+
+    public class TicketFilterDto
+    {
+        public TicketStatus? Status { get; set; }
+        public Guid? CategoryId { get; set; }
+        public DateTime? From { get; set; }
+        public DateTime? To { get; set; }
+        public string? SearchString { get; set; }
+    }
 }

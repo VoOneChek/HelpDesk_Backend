@@ -18,4 +18,11 @@ namespace Application.DTOs.Report
         public double AverageResponseTimeHours { get; set; }
         public int ClosedTickets { get; set; }
     }
+
+    public class OperatorStatsDto
+    {
+        public int TotalAssigned { get; set; }
+        public int ClosedTotal { get; set; }
+        public int ClosedToday { get; set; }
+    }
 }

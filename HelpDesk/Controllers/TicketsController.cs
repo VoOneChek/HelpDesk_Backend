@@ -15,6 +15,7 @@ namespace HelpDesk.Controllers
     {
         private readonly ITicketService _service;
         private readonly GetCurrentUser _currentUser;
+        private readonly GetCurrentUser _userHelper = new GetCurrentUser();
 
         public TicketsController(ITicketService service, GetCurrentUser currentUser)
         {
@@ -45,16 +46,17 @@ namespace HelpDesk.Controllers
 
         [HttpGet]
         [Authorize(Roles = "Operator, Admin")] 
-        public async Task<IActionResult> GetAll()
+        public async Task<IActionResult> GetAll([FromQuery] TicketFilterDto filter)
         {
-            var result = await _service.GetAllAsync();
+            var result = await _service.GetAllAsync(filter);
             return Ok(result.Data);
         }
 
         [HttpPut("{id}/assign")]
         [Authorize(Roles = "Operator, Admin")]
-        public async Task<IActionResult> AssignOperator(Guid id, [FromBody] Guid operatorId)
+        public async Task<IActionResult> AssignOperator(Guid id)
         {
+            var operatorId = _userHelper.GetCurrentUserId(User);
             var result = await _service.AssignOperatorAsync(id, operatorId);
             if (!result.Success) return BadRequest(new { error = result.Error });
             return Ok();
@@ -67,6 +69,15 @@ namespace HelpDesk.Controllers
             var result = await _service.ChangeStatusAsync(id, status);
             if (!result.Success) return BadRequest(new { error = result.Error });
             return Ok();
+        }
+
+        [HttpGet("stats")]
+        [Authorize(Roles = "Operator")]
+        public async Task<IActionResult> GetStats()
+        {
+            var operatorId = _userHelper.GetCurrentUserId(User);
+            var result = await _service.GetOperatorStatsAsync(operatorId);
+            return Ok(result.Data);
         }
     }
 }
