@@ -5,6 +5,7 @@ using Domain.Enums;
 using HelpDesk.Controllers.Common;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace HelpDesk.Controllers
 {
@@ -66,7 +67,8 @@ namespace HelpDesk.Controllers
         [Authorize(Roles = "Operator, Admin")]
         public async Task<IActionResult> ChangeStatus(Guid id, [FromBody] TicketStatus status)
         {
-            var result = await _service.ChangeStatusAsync(id, status);
+            var operatorId = _userHelper.GetCurrentUserId(User);
+            var result = await _service.ChangeStatusAsync(id, status, operatorId);
             if (!result.Success) return BadRequest(new { error = result.Error });
             return Ok();
         }
@@ -77,6 +79,22 @@ namespace HelpDesk.Controllers
         {
             var operatorId = _userHelper.GetCurrentUserId(User);
             var result = await _service.GetOperatorStatsAsync(operatorId);
+            return Ok(result.Data);
+        }
+
+        [HttpGet("{id}/history")]
+        [Authorize] // Доступно и клиенту (своих), и оператору
+        public async Task<IActionResult> GetHistory(Guid id)
+        {
+            var userId = _userHelper.GetCurrentUserId(User);
+            var roleStr = User.FindFirst(ClaimTypes.Role)?.Value;
+            Enum.TryParse<UserRole>(roleStr, out var userRole);
+
+            var result = await _service.GetHistoryAsync(id, userId, userRole);
+
+            if (!result.Success)
+                return BadRequest(new { error = result.Error });
+
             return Ok(result.Data);
         }
     }

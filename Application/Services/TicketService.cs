@@ -1,6 +1,7 @@
 ﻿using Application.Abstraction;
 using Application.Common.Result;
 using Application.DTOs.Ticket;
+using Application.DTOs.TicketHistory;
 using Application.DTOs.User;
 using AutoMapper;
 using Domain.Entities;
@@ -13,15 +14,18 @@ namespace Application.Services
     {
         private readonly ITicketRepository _ticketRepository;
         private readonly IRepository<User> _userRepository;
+        private readonly IRepository<TicketHistory> _historyRepo;
         private readonly IRepository<Category> _categoryRepository;
         private readonly IMapper _mapper;
 
         public TicketService(
             ITicketRepository ticketRepository,
             IRepository<User> userRepository,
+            IRepository<TicketHistory> historyRepo,
             IRepository<Category> categoryRepository,
             IMapper mapper)
         {
+            _historyRepo = historyRepo;
             _ticketRepository = ticketRepository;
             _userRepository = userRepository;
             _categoryRepository = categoryRepository;
@@ -60,6 +64,24 @@ namespace Application.Services
             return Result<IEnumerable<TicketResponseDto>>.Ok(_mapper.Map<IEnumerable<TicketResponseDto>>(tickets));
         }
 
+        public async Task<Result<IEnumerable<TicketHistoryDto>>> GetHistoryAsync(Guid ticketId, Guid currentUserId, UserRole currentUserRole)
+        {
+            var ticket = await _ticketRepository.GetByIdAsync(ticketId);
+
+            if (ticket == null)
+                return Result<IEnumerable<TicketHistoryDto>>.Fail("Обращение не найдено");
+
+            if (currentUserRole == UserRole.Client && ticket.ClientId != currentUserId)
+            {
+                return Result<IEnumerable<TicketHistoryDto>>.Fail("Доступ запрещен");
+            }
+
+            var history = await _ticketRepository.GetHistoryByTicketIdAsync(ticketId);
+            var dtos = _mapper.Map<IEnumerable<TicketHistoryDto>>(history);
+
+            return Result<IEnumerable<TicketHistoryDto>>.Ok(dtos);
+        }
+
         public async Task<Result<IEnumerable<TicketResponseDto>>> GetClientTicketsAsync(Guid clientId)
         {
             var tickets = await _ticketRepository.GetByClientIdAsync(clientId);
@@ -73,24 +95,35 @@ namespace Application.Services
             if (ticket == null)
                 return Result.Fail("Обращение не найдено");
 
+            string actionDesc = ticket.OperatorId.HasValue
+                ? $"Оператор изменен с {ticket.OperatorId} на {operatorId}"
+                : $"Назначен оператор {operatorId}";
+
             ticket.OperatorId = operatorId;
             ticket.Status = TicketStatus.InProgress;
+
+            await AddHistoryEntry(ticket, operatorId, actionDesc);
 
             await _ticketRepository.Update(ticket);
             return Result.Ok();
         }
 
-        public async Task<Result> ChangeStatusAsync(Guid ticketId, TicketStatus status)
+        public async Task<Result> ChangeStatusAsync(Guid ticketId, TicketStatus status, Guid changedByUserId)
         {
             var ticket = await _ticketRepository.GetByIdAsync(ticketId);
 
             if (ticket == null) 
                 return Result.Fail("Обращение не найдено");
 
+            var oldStatus = ticket.Status;
+            if (oldStatus == status) return Result.Ok();
+
             ticket.Status = status;
 
             if (status == TicketStatus.Closed)
                 ticket.ClosedAt = DateTime.UtcNow;
+
+            await AddHistoryEntry(ticket, changedByUserId, $"Статус изменен: {oldStatus} -> {status}");
 
             await _ticketRepository.Update(ticket);
             return Result.Ok();
@@ -112,6 +145,19 @@ namespace Application.Services
                 ClosedTotal = closedTotal,
                 ClosedToday = closedToday
             });
+        }
+
+        private async Task AddHistoryEntry(Ticket ticket, Guid userId, string action)
+        {
+            var historyEntry = new TicketHistory
+            {
+                Id = Guid.NewGuid(),
+                TicketId = ticket.Id,
+                ChangedById = userId,
+                Action = action,
+                ChangedAt = DateTime.UtcNow
+            };
+            await _historyRepo.AddAsync(historyEntry);
         }
     }
 }

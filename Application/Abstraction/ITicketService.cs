@@ -1,6 +1,7 @@
 ﻿using Application.Common.Result;
-using Application.DTOs.User;
 using Application.DTOs.Ticket;
+using Application.DTOs.TicketHistory;
+using Application.DTOs.User;
 using Domain.Enums;
 
 namespace Application.Abstraction
@@ -14,7 +15,9 @@ namespace Application.Abstraction
         // Для оператора
         Task<Result<IEnumerable<TicketResponseDto>>> GetAllAsync(TicketFilterDto filter);
         Task<Result> AssignOperatorAsync(Guid ticketId, Guid operatorId);
-        Task<Result> ChangeStatusAsync(Guid ticketId, TicketStatus status);
+        Task<Result> ChangeStatusAsync(Guid ticketId, TicketStatus status, Guid changedByUserId);
         Task<Result<OperatorStatsDto>> GetOperatorStatsAsync(Guid operatorId);
+
+        Task<Result<IEnumerable<TicketHistoryDto>>> GetHistoryAsync(Guid ticketId, Guid currentUserId, UserRole currentUserRole);
     }
 }

@@ -34,5 +34,7 @@ namespace Infrastructure.Abstraction
         /// <param name="to"></param>
         /// <returns></returns>
         Task<int> CountByOperatorAsync(Guid operatorId, TicketStatus? status = null, DateTime? from = null, DateTime? to = null);
+
+        Task<IEnumerable<TicketHistory>> GetHistoryByTicketIdAsync(Guid ticketId);
     }
 }

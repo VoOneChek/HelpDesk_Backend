@@ -1,4 +1,5 @@
 ﻿using Application.Abstraction;
+using HelpDesk.Controllers.Common;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -10,26 +11,28 @@ namespace HelpDesk.Controllers
     public class NotificationsController : ControllerBase
     {
         private readonly INotificationService _service;
+        private readonly GetCurrentUser _userHelper = new GetCurrentUser();
 
-        public NotificationsController(INotificationService service)
+        public NotificationsController(INotificationService service, GetCurrentUser userHelper)
         {
             _service = service;
+            _userHelper = userHelper;
         }
 
-        // GET: api/notifications
         [HttpGet]
         public async Task<IActionResult> GetMy()
         {
-            var userId = Guid.Parse(User.FindFirst("id")!.Value);
-            return Ok(await _service.GetUserNotificationsAsync(userId));
+            var userId = _userHelper.GetCurrentUserId(User);
+            var result = await _service.GetUserNotificationsAsync(userId);
+            return Ok(result.Data);
         }
 
-        // PUT: api/notifications/{id}/read
         [HttpPut("{id}/read")]
         public async Task<IActionResult> MarkRead(Guid id)
         {
-            await _service.MarkAsReadAsync(id);
-            return NoContent();
+            var result = await _service.MarkAsReadAsync(id);
+            if (!result.Success) return BadRequest(new { error = result.Error });
+            return Ok();
         }
     }
 }

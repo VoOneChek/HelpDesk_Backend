@@ -11,6 +11,7 @@ namespace Application.Services
     {
         private readonly IRepository<Comment> _repository;
         private readonly IRepository<Ticket> _ticketRepository;
+        private readonly INotificationService _notificationService;
         private readonly IRepository<User> _userRepository;
         private readonly IMapper _mapper;
 
@@ -18,11 +19,13 @@ namespace Application.Services
             IRepository<Comment> repository,
             IRepository<Ticket> ticketRepository,
             IRepository<User> userRepository,
+            INotificationService notificationService,
             IMapper mapper)
         {
             _repository = repository;
             _ticketRepository = ticketRepository;
             _userRepository = userRepository;
+            _notificationService = notificationService;
             _mapper = mapper;
         }
 
@@ -44,6 +47,13 @@ namespace Application.Services
             };
 
             await _repository.AddAsync(comment);
+
+            Guid? notifyUserId = authorId == ticket.ClientId ? ticket.OperatorId : ticket.ClientId;
+
+            if (notifyUserId.HasValue && user != null)
+            {
+                await _notificationService.NotifyAsync(notifyUserId.Value, $"Новый комментарий к тикету #{ticketId}: \"{dto.Content.Substring(0, Math.Min(20, dto.Content.Length))}...\"");
+            }
 
             return Result<CommentResponseDto>.Ok(_mapper.Map<CommentResponseDto>(comment));
         }

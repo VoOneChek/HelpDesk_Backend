@@ -1,4 +1,5 @@
 ﻿using Application.Abstraction;
+using Application.Common.Result;
 using Application.DTOs.Notification;
 using AutoMapper;
 using Domain.Entities;
@@ -17,16 +18,29 @@ namespace Application.Services
             _mapper = mapper;
         }
 
-        public async Task<IEnumerable<NotificationDto>> GetUserNotificationsAsync(Guid userId)
+        public async Task NotifyAsync(Guid userId, string message)
+        {
+            var notification = new Notification
+            {
+                Id = Guid.NewGuid(),
+                UserId = userId,
+                Message = message,
+                IsRead = false,
+                CreatedAt = DateTime.UtcNow
+            };
+            await _repository.AddAsync(notification);
+        }
+
+        public async Task<Result<IEnumerable<NotificationDto>>> GetUserNotificationsAsync(Guid userId)
         {
             var notifications = (await _repository.GetAllAsync())
                 .Where(n => n.UserId == userId)
                 .OrderByDescending(n => n.CreatedAt);
 
-            return _mapper.Map<IEnumerable<NotificationDto>>(notifications);
+            return Result<IEnumerable<NotificationDto>>.Ok(_mapper.Map<IEnumerable<NotificationDto>>(notifications));
         }
 
-        public async Task MarkAsReadAsync(Guid notificationId)
+        public async Task<Result> MarkAsReadAsync(Guid notificationId)
         {
             var notification = await _repository.GetByIdAsync(notificationId)
                               ?? throw new Exception("Notification not found");
@@ -34,6 +48,7 @@ namespace Application.Services
             notification.IsRead = true;
 
             await _repository.Update(notification);
+            return Result.Ok();
         }
     }
 }

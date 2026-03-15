@@ -77,5 +77,14 @@ namespace Infrastructure.Repositories
 
             return await query.CountAsync();
         }
+
+        public async Task<IEnumerable<TicketHistory>> GetHistoryByTicketIdAsync(Guid ticketId)
+        {
+            return await _context.TicketHistories
+                .Where(h => h.TicketId == ticketId)
+                .Include(h => h.ChangedBy)
+                .OrderBy(h => h.ChangedAt)
+                .ToListAsync();
+        }
     }
 }

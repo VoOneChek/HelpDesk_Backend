@@ -78,8 +78,6 @@ namespace Application.Mapping
                 .ForMember(dest => dest.CreatedAt, opt => opt.MapFrom(src => DateTime.UtcNow))
                 .ForMember(dest => dest.IsBlocked, opt => opt.MapFrom(src => false))
                 .ForMember(dest => dest.Role, opt => opt.MapFrom(src => Enum.Parse<UserRole>(src.Role)));
-
-
         }
     }
 }

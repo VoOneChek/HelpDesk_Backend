@@ -1,4 +1,5 @@
 ﻿using Application.Abstraction;
+using Application.DTOs.Category;
 using Application.DTOs.Faq;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -16,15 +17,37 @@ namespace HelpDesk.Controllers
             _service = service;
         }
 
-        // GET: api/faq
         [HttpGet]
         public async Task<IActionResult> GetAll()
-            => Ok(await _service.GetAllAsync());
+        {
+            var result = await _service.GetAllAsync();
+            return Ok(result.Data);
+        }
 
-        // POST: api/faq
-        [Authorize(Roles = "Admin")]
         [HttpPost]
-        public async Task<IActionResult> Create(CreateFaqDto dto)
-            => Ok(await _service.CreateAsync(dto));
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> Create([FromBody] CreateFaqDto dto)
+        {
+            var result = await _service.CreateAsync(dto);
+            return Ok(result.Data);
+        }
+
+        [HttpPut("{id}")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> Update(Guid id, [FromBody] CreateFaqDto dto)
+        {
+            var result = await _service.UpdateAsync(id, dto);
+            if (!result.Success) return BadRequest(new { error = result.Error });
+            return Ok(result.Data);
+        }
+
+        [HttpDelete("{id}")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> Delete(Guid id)
+        {
+            var result = await _service.DeleteAsync(id);
+            if (!result.Success) return BadRequest(new { error = result.Error });
+            return Ok(new { message = "Справка удалена" });
+        }
     }
 }
