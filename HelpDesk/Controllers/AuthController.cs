@@ -47,12 +47,13 @@ namespace HelpDesk.Controllers
 
             // выводим в консоль
             Console.WriteLine($"[DEBUG] Verification code for user {user.FullName}: {code}");
-            //var email = user.Email;
-            //if (string.IsNullOrEmpty(email))
-            //    return BadRequest(new { error = "У пользователя не указана почта" });
+            
+            var email = user.Email;
+            if (string.IsNullOrEmpty(email))
+                return BadRequest(new { error = "У пользователя не указана почта" });
             //await _emailService.SendEmailAsync(
             //    to: email,
-            //    subject: "Код подтверждения ведомости",
+            //    subject: "Код подтверждения",
             //    body: $"Ваш код подтверждения: {code}");
 
             return Ok(new VerifyCodeDto
@@ -60,6 +61,71 @@ namespace HelpDesk.Controllers
                 SessionId = sessionId,
                 Code = "email"
             });
+        }
+
+        [HttpPost("recover-login")]
+        public async Task<IActionResult> RecoverLogin(LoginDto dto)
+        {
+            var result = await _authService.RecoverLoginAsync(dto);
+
+            if (!result.Success)
+                return Unauthorized(new { error = result.Error });
+
+            var user = result.Data!;
+
+            var code = new Random().Next(100000, 999999).ToString();
+            var sessionId = _sessionService.CreateSession(user.Id, code, TimeSpan.FromMinutes(5));
+
+            // выводим в консоль
+            Console.WriteLine($"[DEBUG] Verification code for user {user.FullName}: {code}");
+
+            var email = user.Email;
+            if (string.IsNullOrEmpty(email))
+                return BadRequest(new { error = "У пользователя не указана почта" });
+            //await _emailService.SendEmailAsync(
+            //    to: email,
+            //    subject: "Код подтверждения",
+            //    body: $"Ваш код подтверждения: {code}");
+
+            return Ok(new VerifyCodeDto
+            {
+                SessionId = sessionId,
+                Code = "email"
+            });
+        }
+
+        [HttpPost("recover-password")]
+        public async Task<IActionResult> RecoverPassword([FromBody] RecoverPassword dto)
+        {
+            var session = _sessionService.GetSession(dto.SessionId);
+
+            if (session == null)
+                return Unauthorized(new { error = "Сессия не найдена" });
+
+            if (session.ExpiresAt < DateTime.UtcNow)
+            {
+                _sessionService.RemoveSession(dto.SessionId);
+                return Unauthorized(new { error = "Код устарел" });
+            }
+
+            if (session.Code != dto.Code)
+                return Unauthorized(new { error = "Неверный код" });
+
+            var result = await _authService.RecoverPasswordAsync(session.UserId, dto);
+
+            if (!result.Success)
+                return Unauthorized(new { error = result.Error });
+
+            _sessionService.RemoveSession(dto.SessionId);
+
+            var user = result.Data!;
+
+            var tokenResult = await _authService.GenerateToken(user.Id);
+
+            if (!tokenResult.Success)
+                return Unauthorized(new { error = tokenResult.Error });
+
+            return Ok(tokenResult.Data);
         }
 
         [HttpPost("verify-code")]

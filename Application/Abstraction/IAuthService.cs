@@ -19,5 +19,14 @@ namespace Application.Abstraction
         /// Генерация JWT токена для пользователя
         /// </summary>
         Task<Result<AuthResponseDto>> GenerateToken(Guid userID);
+
+        /// <summary>
+        /// Восстановление пароля
+        /// </summary>
+        /// <param name="loginDto"></param>
+        /// <returns></returns>
+        Task<Result<UserResponseDto>> RecoverLoginAsync(LoginDto loginDto);
+
+        Task<Result<UserResponseDto>> RecoverPasswordAsync(Guid userID, RecoverPassword loginDto);
     }
 }

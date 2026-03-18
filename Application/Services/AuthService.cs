@@ -79,6 +79,56 @@ namespace Application.Services
             return Result<UserResponseDto>.Ok(_mapper.Map<UserResponseDto>(user));
         }
 
+        public async Task<Result<UserResponseDto>> RecoverLoginAsync(LoginDto loginDto)
+        {
+            _logger.LogInformation("Восстановление пользователем пароля с логином {Login}", loginDto.Email);
+
+            var user = await _repository.GetByLoginAsync(loginDto.Email);
+
+            if (user == null)
+            {
+                _logger.LogWarning("Пользователь с логином {Login} не найден", loginDto.Email);
+                return Result<UserResponseDto>.Fail("Пользователь не найден");
+            }
+            else if (user.IsBlocked)
+            {
+                _logger.LogWarning("Пользователь заблокирован");
+                return Result<UserResponseDto>.Fail("Пользователь заблокирован");
+            }
+
+            _logger.LogInformation("Пользователь с логином {Login} успешно аутентифицирован", loginDto.Email);
+            return Result<UserResponseDto>.Ok(_mapper.Map<UserResponseDto>(user));
+        }
+
+        public async Task<Result<UserResponseDto>> RecoverPasswordAsync(Guid userID, RecoverPassword loginDto)
+        {
+            _logger.LogInformation("Восстановление пользователем пароля с ID = {ID}", userID);
+
+            var user = await _repository.GetByIdAsync(userID);
+
+            if (user == null)
+            {
+                _logger.LogWarning("Пользователь с ID = {ID} не найден", userID);
+                return Result<UserResponseDto>.Fail("Пользователь не найден");
+            }
+            else if (user.IsBlocked)
+            {
+                _logger.LogWarning("Пользователь заблокирован");
+                return Result<UserResponseDto>.Fail("Пользователь заблокирован");
+            }
+            else if (BCrypt.Net.BCrypt.Verify(loginDto.Password, user.PasswordHash))
+            {
+                _logger.LogWarning("Старый пароль пользователя с ID = {ID} совпадает с новым паролем", userID);
+                return Result<UserResponseDto>.Fail("Старый пароль совпадает с новым паролем");
+            }
+
+            user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(loginDto.Password);
+            await _repository.Update(user);
+
+            _logger.LogInformation("Пользователь с ID = {ID} успешно аутентифицирован", userID);
+            return Result<UserResponseDto>.Ok(_mapper.Map<UserResponseDto>(user));
+        }
+
         public async Task<Result<AuthResponseDto>> GenerateToken(Guid userID)
         {
             _logger.LogInformation("Генерация токена для пользователя с ID {UserId}", userID);
