@@ -3,7 +3,12 @@ using ClosedXML.Excel;
 
 namespace Application.Common.GenerateReportFile
 {
-    public class GenerateExcelFile
+    public interface IExcelGenerator
+    {
+        byte[] GenerateExcelWithStats(ReportSummaryDto summary, List<ReportItemDto> details);
+    }
+
+    public class GenerateExcelFile: IExcelGenerator
     {
         public byte[] GenerateExcelWithStats(ReportSummaryDto summary, List<ReportItemDto> details)
         {

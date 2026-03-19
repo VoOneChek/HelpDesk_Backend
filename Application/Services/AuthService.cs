@@ -14,11 +14,11 @@ namespace Application.Services
     public class AuthService : IAuthService
     {
         private readonly IUserRepository _repository;
-        private readonly JwtTokenGenerator _tokenGenerator;
+        private readonly IJwtTokenGenerator _tokenGenerator;
         private readonly ILogger<AuthService> _logger;
         private readonly IMapper _mapper;
 
-        public AuthService(IUserRepository repository, IMapper mapper, JwtTokenGenerator tokenGenerator, ILogger<AuthService> logger)
+        public AuthService(IUserRepository repository, IMapper mapper, IJwtTokenGenerator tokenGenerator, ILogger<AuthService> logger)
         {
             _repository = repository;
             _mapper = mapper;

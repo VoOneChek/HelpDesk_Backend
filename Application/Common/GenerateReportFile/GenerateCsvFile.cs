@@ -4,7 +4,12 @@ using System.Globalization;
 
 namespace Application.Common.GenerateReportFile
 {
-    public class GenerateCsvFile
+    public interface ICsvGenerator
+    {
+        byte[] GenerateCsv(List<ReportItemDto> details);
+    }
+
+    public class GenerateCsvFile: ICsvGenerator
     {
         public byte[] GenerateCsv(List<ReportItemDto> data)
         {
