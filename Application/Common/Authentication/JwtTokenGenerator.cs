@@ -7,7 +7,12 @@ using System.Text;
 
 namespace Application.Common.Authentication
 {
-    public class JwtTokenGenerator
+    public interface IJwtTokenGenerator
+    {
+        string GenerateToken(User user);
+    }
+
+    public class JwtTokenGenerator: IJwtTokenGenerator
     {
         private readonly IConfiguration _config;
 

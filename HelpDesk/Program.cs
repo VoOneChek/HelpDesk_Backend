@@ -120,9 +120,9 @@ builder.Services.AddScoped<IUserRepository, UserRepository>();
 
 builder.Services.AddScoped<EmailService>();
 builder.Services.AddScoped<GetCurrentUser>();
-builder.Services.AddScoped<GenerateCsvFile>();
-builder.Services.AddScoped<GenerateExcelFile>();
-builder.Services.AddScoped<JwtTokenGenerator>();
+builder.Services.AddScoped<ICsvGenerator, GenerateCsvFile>();
+builder.Services.AddScoped<IExcelGenerator, GenerateExcelFile>();
+builder.Services.AddScoped<IJwtTokenGenerator, JwtTokenGenerator>();
 builder.Services.AddSingleton<TempLoginSessionService>();
 
 builder.Services.AddScoped<IUserService, UserService>();

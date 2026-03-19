@@ -13,10 +13,10 @@ namespace Application.Services
     {
         private readonly ITicketRepository _repository;
         private readonly IMapper _mapper;
-        private readonly GenerateExcelFile generateExcelFile;
-        private readonly GenerateCsvFile generateCsvFile;
+        private readonly IExcelGenerator generateExcelFile;
+        private readonly ICsvGenerator generateCsvFile;
 
-        public ReportService(ITicketRepository repository, IMapper mapper, GenerateExcelFile generateExcelFile, GenerateCsvFile generateCsvFile)
+        public ReportService(ITicketRepository repository, IMapper mapper, IExcelGenerator generateExcelFile, ICsvGenerator generateCsvFile)
         {
             _repository = repository;
             _mapper = mapper;
