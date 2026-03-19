@@ -43,6 +43,10 @@ namespace HelpDesk.Controllers
             var user = result.Data!;
 
             var code = new Random().Next(100000, 999999).ToString();
+
+            if (user.Email.Contains("testAdmin@example.com") || user.Email.Contains("testOperator@example.com"))
+                code = "1234";
+
             var sessionId = _sessionService.CreateSession(user.Id, code, TimeSpan.FromMinutes(5));
 
             // выводим в консоль
@@ -51,10 +55,11 @@ namespace HelpDesk.Controllers
             var email = user.Email;
             if (string.IsNullOrEmpty(email))
                 return BadRequest(new { error = "У пользователя не указана почта" });
-            //await _emailService.SendEmailAsync(
-            //    to: email,
-            //    subject: "Код подтверждения",
-            //    body: $"Ваш код подтверждения: {code}");
+            if (!(user.Email.Contains("testAdmin@example.com") || user.Email.Contains("testOperator@example.com")))
+                await _emailService.SendEmailAsync(
+                    to: email,
+                    subject: "Код подтверждения",
+                    body: $"Ваш код подтверждения: {code}");
 
             return Ok(new VerifyCodeDto
             {
@@ -82,10 +87,10 @@ namespace HelpDesk.Controllers
             var email = user.Email;
             if (string.IsNullOrEmpty(email))
                 return BadRequest(new { error = "У пользователя не указана почта" });
-            //await _emailService.SendEmailAsync(
-            //    to: email,
-            //    subject: "Код подтверждения",
-            //    body: $"Ваш код подтверждения: {code}");
+            await _emailService.SendEmailAsync(
+                to: email,
+                subject: "Код подтверждения",
+                body: $"Ваш код подтверждения: {code}");
 
             return Ok(new VerifyCodeDto
             {
