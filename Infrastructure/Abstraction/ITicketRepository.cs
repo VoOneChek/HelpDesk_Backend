@@ -10,13 +10,13 @@ namespace Infrastructure.Abstraction
         /// </summary>
         /// <param name="clientId"></param>
         /// <returns></returns>
-        Task<IEnumerable<Ticket>> GetByClientIdAsync(Guid clientId);
+        Task<IEnumerable<Ticket>> GetByClientIdAsync(Guid clientId, TicketStatus? status, Guid? categoryId, string? search);
 
         /// <summary>
         /// Получение всех тикетов (для оператора) с подгрузкой данных
         /// </summary>
         /// <returns></returns>
-        Task<IEnumerable<Ticket>> GetAllWithDetailsAsync(TicketStatus? status, Guid? categoryId, DateTime? from, DateTime? to, string? search);
+        Task<IEnumerable<Ticket>> GetAllWithDetailsAsync(TicketStatus? status, Guid? categoryId, DateTime? from, DateTime? to, string? search, Guid? operatorId);
 
         /// <summary>
         /// Получение одного тикета с деталями
@@ -35,6 +35,18 @@ namespace Infrastructure.Abstraction
         /// <returns></returns>
         Task<int> CountByOperatorAsync(Guid operatorId, TicketStatus? status = null, DateTime? from = null, DateTime? to = null);
 
+        /// <summary>
+        /// Получение истории тикета по Id
+        /// </summary>
+        /// <param name="ticketId"></param>
+        /// <returns></returns>
         Task<IEnumerable<TicketHistory>> GetHistoryByTicketIdAsync(Guid ticketId);
+
+        /// <summary>
+        /// Получение карточки обращения
+        /// </summary>
+        /// <param name="id"></param>
+        /// <returns></returns>
+        Task<Ticket?> GetTicketWithDetailsAsync(Guid id);
     }
 }

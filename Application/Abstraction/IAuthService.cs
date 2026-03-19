@@ -25,7 +25,7 @@ namespace Application.Abstraction
         /// </summary>
         /// <param name="loginDto"></param>
         /// <returns></returns>
-        Task<Result<UserResponseDto>> RecoverLoginAsync(LoginDto loginDto);
+        Task<Result<UserResponseDto>> RecoverLoginAsync(UpdateProfileDto loginDto);
 
         Task<Result<UserResponseDto>> RecoverPasswordAsync(Guid userID, RecoverPassword loginDto);
     }

@@ -79,15 +79,15 @@ namespace Application.Services
             return Result<UserResponseDto>.Ok(_mapper.Map<UserResponseDto>(user));
         }
 
-        public async Task<Result<UserResponseDto>> RecoverLoginAsync(LoginDto loginDto)
+        public async Task<Result<UserResponseDto>> RecoverLoginAsync(UpdateProfileDto loginDto)
         {
-            _logger.LogInformation("Восстановление пользователем пароля с логином {Login}", loginDto.Email);
+            _logger.LogInformation("Восстановление пользователем пароля с логином {Login}", loginDto.FullName);
 
-            var user = await _repository.GetByLoginAsync(loginDto.Email);
+            var user = await _repository.GetByLoginAsync(loginDto.FullName);
 
             if (user == null)
             {
-                _logger.LogWarning("Пользователь с логином {Login} не найден", loginDto.Email);
+                _logger.LogWarning("Пользователь с логином {Login} не найден", loginDto.FullName);
                 return Result<UserResponseDto>.Fail("Пользователь не найден");
             }
             else if (user.IsBlocked)
@@ -96,7 +96,7 @@ namespace Application.Services
                 return Result<UserResponseDto>.Fail("Пользователь заблокирован");
             }
 
-            _logger.LogInformation("Пользователь с логином {Login} успешно аутентифицирован", loginDto.Email);
+            _logger.LogInformation("Пользователь с логином {Login} успешно аутентифицирован", loginDto.FullName);
             return Result<UserResponseDto>.Ok(_mapper.Map<UserResponseDto>(user));
         }
 

@@ -24,20 +24,30 @@ namespace Application.Services
             this.generateCsvFile = generateCsvFile;
         }
 
-        public async Task<Result<IEnumerable<ReportItemDto>>> GetReportAsync(ReportFilterDto filter)
+        public async Task<Result<ReportResultDto>> GetReportAsync(ReportFilterDto filter)
         {
             if (filter.From == default || filter.To == default)
-                return Result<IEnumerable<ReportItemDto>>.Fail("Необходимо указать период (From и To)");
+                return Result<ReportResultDto>.Fail("Необходимо указать период");
 
             var tickets = await _repository.GetAllWithDetailsAsync(
                 filter.Status,
                 filter.CategoryId,
                 filter.From,
                 filter.To,
-                null
+                null,
+                filter.OperatorId
             );
+            var ticketList = tickets.ToList();
 
-            return Result<IEnumerable<ReportItemDto>>.Ok(_mapper.Map<IEnumerable<ReportItemDto>>(tickets));
+            var summary = CalculateSummary(ticketList);
+
+            var details = _mapper.Map<List<ReportItemDto>>(ticketList);
+
+            return Result<ReportResultDto>.Ok(new ReportResultDto
+            {
+                Summary = summary,
+                Details = details
+            });
         }
 
         public async Task<Result<(byte[] FileBytes, string FileName, string ContentType)>> ExportReportAsync(ReportFilterDto filter, string format)
@@ -48,7 +58,8 @@ namespace Application.Services
                 filter.CategoryId,
                 filter.From,
                 filter.To,
-                null
+                null,
+                filter.OperatorId
             );
 
             var ticketList = tickets.ToList();
@@ -93,7 +104,6 @@ namespace Application.Services
             return Result<(byte[] FileBytes, string FileName, string ContentType)>.Ok((bytes, fileName, contentType));
         }
 
-        // Метод подсчета статистики
         private ReportSummaryDto CalculateSummary(List<Ticket> tickets)
         {
             var closedTickets = tickets.Where(t => t.Status == TicketStatus.Closed && t.ClosedAt.HasValue).ToList();
@@ -103,7 +113,7 @@ namespace Application.Services
             {
                 var totalSeconds = closedTickets.Average(t => (t.ClosedAt!.Value - t.CreatedAt).TotalSeconds);
                 var span = TimeSpan.FromSeconds(totalSeconds);
-                avgTime = $"{Math.Floor(span.TotalDays)} дн. {span.Hours} ч.";
+                avgTime = $"{span.Days} дн. {span.Hours} ч. {span.Minutes} мин.";
             }
 
             return new ReportSummaryDto
@@ -113,6 +123,7 @@ namespace Application.Services
                 OpenTickets = tickets.Count(t => t.Status != TicketStatus.Closed),
                 AverageResolutionTime = avgTime,
                 TopCategories = tickets
+                    .Where(t => t.Category != null)
                     .GroupBy(t => t.Category.Name)
                     .Select(g => new CategoryStatsDto { CategoryName = g.Key, Count = g.Count() })
                     .OrderByDescending(g => g.Count)

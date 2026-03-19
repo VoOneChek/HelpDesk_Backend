@@ -48,13 +48,20 @@ namespace Application.Mapping
                 .ForMember(dest => dest.CategoryName,
                     opt => opt.MapFrom(src => src.Category.Name));
 
+            CreateMap<Ticket, TicketDetailsDto>()
+                .ForMember(dest => dest.Status, opt => opt.MapFrom(src => src.Status.ToString()))
+                .ForMember(dest => dest.Priority, opt => opt.MapFrom(src => src.Priority.ToString()))
+                .ForMember(dest => dest.ClientName, opt => opt.MapFrom(src => src.Client.FullName))
+                .ForMember(dest => dest.OperatorName, opt => opt.MapFrom(src => src.Operator != null ? src.Operator.FullName : null))
+                .ForMember(dest => dest.CategoryName, opt => opt.MapFrom(src => src.Category.Name));
+
             CreateMap<Comment, CommentResponseDto>()
                 .ForMember(dest => dest.AuthorName,
                     opt => opt.MapFrom(src => src.Author.FullName));
 
             CreateMap<TicketHistory, TicketHistoryDto>()
                 .ForMember(dest => dest.ChangedBy,
-                    opt => opt.MapFrom(src => src.ChangedBy.FullName));
+                    opt => opt.MapFrom(src => src.ChangedBy != null ? src.ChangedBy.FullName : "Система"));
 
             CreateMap<FaqArticle, FaqDto>();
             CreateMap<CreateFaqDto, FaqArticle>();

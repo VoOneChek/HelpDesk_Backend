@@ -10,7 +10,7 @@ namespace Application.Abstraction
     {
         // Для клиента
         Task<Result<TicketResponseDto>> CreateTicketAsync(Guid clientId, CreateTicketDto dto);
-        Task<Result<IEnumerable<TicketResponseDto>>> GetClientTicketsAsync(Guid clientId);
+        Task<Result<IEnumerable<TicketResponseDto>>> GetClientTicketsAsync(Guid clientId, TicketFilterDto filter);
 
         // Для оператора
         Task<Result<IEnumerable<TicketResponseDto>>> GetAllAsync(TicketFilterDto filter);
@@ -19,5 +19,6 @@ namespace Application.Abstraction
         Task<Result<OperatorStatsDto>> GetOperatorStatsAsync(Guid operatorId);
 
         Task<Result<IEnumerable<TicketHistoryDto>>> GetHistoryAsync(Guid ticketId, Guid currentUserId, UserRole currentUserRole);
+        Task<Result<TicketDetailsDto>> GetTicketDetailsAsync(Guid ticketId, Guid currentUserId, UserRole currentUserRole);
     }
 }

@@ -13,6 +13,7 @@ namespace Application.DTOs.Report
         public DateTime To { get; set; }
         public Guid? CategoryId { get; set; }
         public TicketStatus? Status { get; set; }
+        public Guid? OperatorId { get; set; }
     }
 
     public class ReportItemDto
@@ -54,5 +55,11 @@ namespace Application.DTOs.Report
     {
         public string OperatorName { get; set; } = null!;
         public int ClosedCount { get; set; }
+    }
+
+    public class ReportResultDto
+    {
+        public ReportSummaryDto Summary { get; set; } = null!;
+        public List<ReportItemDto> Details { get; set; } = null!;
     }
 }

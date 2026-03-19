@@ -13,14 +13,14 @@ namespace Application.Services
     public class TicketService : ITicketService
     {
         private readonly ITicketRepository _ticketRepository;
-        private readonly IRepository<User> _userRepository;
+        private readonly IUserRepository _userRepository;
         private readonly IRepository<TicketHistory> _historyRepo;
         private readonly IRepository<Category> _categoryRepository;
         private readonly IMapper _mapper;
 
         public TicketService(
             ITicketRepository ticketRepository,
-            IRepository<User> userRepository,
+            IUserRepository userRepository,
             IRepository<TicketHistory> historyRepo,
             IRepository<Category> categoryRepository,
             IMapper mapper)
@@ -59,7 +59,8 @@ namespace Application.Services
                 filter.CategoryId,
                 filter.From,
                 filter.To,
-                filter.SearchString
+                filter.SearchString,
+                filter.OperatorId
             );
             return Result<IEnumerable<TicketResponseDto>>.Ok(_mapper.Map<IEnumerable<TicketResponseDto>>(tickets));
         }
@@ -82,9 +83,14 @@ namespace Application.Services
             return Result<IEnumerable<TicketHistoryDto>>.Ok(dtos);
         }
 
-        public async Task<Result<IEnumerable<TicketResponseDto>>> GetClientTicketsAsync(Guid clientId)
+        public async Task<Result<IEnumerable<TicketResponseDto>>> GetClientTicketsAsync(Guid clientId, TicketFilterDto filter)
         {
-            var tickets = await _ticketRepository.GetByClientIdAsync(clientId);
+            var tickets = await _ticketRepository.GetByClientIdAsync(
+                clientId,
+                filter.Status,
+                filter.CategoryId,
+                filter.SearchString
+                );
             return Result<IEnumerable<TicketResponseDto>>.Ok(_mapper.Map<IEnumerable<TicketResponseDto>>(tickets));
         }
 
@@ -95,12 +101,16 @@ namespace Application.Services
             if (ticket == null)
                 return Result.Fail("Обращение не найдено");
 
+            var operatorUser = await _userRepository.GetByIdAsync(operatorId);
+            if (operatorUser == null) 
+                return Result.Fail("Оператор не найден");
+
             string actionDesc = ticket.OperatorId.HasValue
-                ? $"Оператор изменен с {ticket.OperatorId} на {operatorId}"
-                : $"Назначен оператор {operatorId}";
+                ? $"Оператор изменен на {operatorUser.FullName}"
+                : $"Назначен оператор {operatorUser.FullName}";
 
             ticket.OperatorId = operatorId;
-            ticket.Status = TicketStatus.InProgress;
+            if (ticket.Status == TicketStatus.New) ticket.Status = TicketStatus.InProgress;
 
             await AddHistoryEntry(ticket, operatorId, actionDesc);
 
@@ -158,6 +168,25 @@ namespace Application.Services
                 ChangedAt = DateTime.UtcNow
             };
             await _historyRepo.AddAsync(historyEntry);
+        }
+
+        public async Task<Result<TicketDetailsDto>> GetTicketDetailsAsync(Guid ticketId, Guid currentUserId, UserRole currentUserRole)
+        {
+            var ticket = await _ticketRepository.GetTicketWithDetailsAsync(ticketId);
+
+            if (ticket == null)
+            {
+                return Result<TicketDetailsDto>.Fail("Обращение не найдено");
+            }
+
+            if (currentUserRole == UserRole.Client && ticket.ClientId != currentUserId)
+            {
+                return Result<TicketDetailsDto>.Fail("Доступ запрещен");
+            }
+
+            var dto = _mapper.Map<TicketDetailsDto>(ticket);
+
+            return Result<TicketDetailsDto>.Ok(dto);
         }
     }
 }

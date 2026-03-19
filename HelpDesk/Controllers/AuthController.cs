@@ -64,7 +64,7 @@ namespace HelpDesk.Controllers
         }
 
         [HttpPost("recover-login")]
-        public async Task<IActionResult> RecoverLogin(LoginDto dto)
+        public async Task<IActionResult> RecoverLogin(UpdateProfileDto dto)
         {
             var result = await _authService.RecoverLoginAsync(dto);
 

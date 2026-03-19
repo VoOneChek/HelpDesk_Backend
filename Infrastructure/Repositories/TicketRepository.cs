@@ -12,7 +12,7 @@ namespace Infrastructure.Repositories
         {
         }
 
-        public async Task<IEnumerable<Ticket>> GetAllWithDetailsAsync(TicketStatus? status, Guid? categoryId, DateTime? from, DateTime? to, string? search)
+        public async Task<IEnumerable<Ticket>> GetAllWithDetailsAsync(TicketStatus? status, Guid? categoryId, DateTime? from, DateTime? to, string? search, Guid? operatorId)
         {
             var query = _context.Tickets
                 .Include(t => t.Category)
@@ -27,25 +27,51 @@ namespace Infrastructure.Repositories
                 query = query.Where(t => t.CategoryId == categoryId.Value);
 
             if (from.HasValue)
-                query = query.Where(t => t.CreatedAt >= from.Value);
+            {
+                var utcFrom = from.Value.Kind == DateTimeKind.Unspecified
+                    ? DateTime.SpecifyKind(from.Value, DateTimeKind.Utc)
+                    : from.Value.ToUniversalTime();
+
+                query = query.Where(t => t.CreatedAt >= utcFrom);
+            }
 
             if (to.HasValue)
-                query = query.Where(t => t.CreatedAt <= to.Value);
+            { 
+                var utcTo = to.Value.Kind == DateTimeKind.Unspecified
+                    ? DateTime.SpecifyKind(to.Value, DateTimeKind.Utc)
+                    : to.Value.ToUniversalTime();
+
+                query = query.Where(t => t.CreatedAt <= utcTo);
+            }
+
+            if (!string.IsNullOrEmpty(search))
+                query = query.Where(t => t.Title.Contains(search) || t.Description.Contains(search));
+
+            if (operatorId.HasValue)
+                query = query.Where(t => t.OperatorId == operatorId.Value);
+
+            return await query.OrderByDescending(t => t.CreatedAt).ToListAsync();
+        }
+
+        public async Task<IEnumerable<Ticket>> GetByClientIdAsync(Guid clientId, TicketStatus? status, Guid? categoryId, string? search)
+        {
+            var query = _context.Tickets
+                .Include(t => t.Category)
+                .Include(t => t.Client)
+                .Include(t => t.Operator)
+                .Where(t => t.ClientId == clientId)
+                .AsQueryable();
+
+            if (status.HasValue)
+                query = query.Where(t => t.Status == status.Value);
+
+            if (categoryId.HasValue)
+                query = query.Where(t => t.CategoryId == categoryId.Value);
 
             if (!string.IsNullOrEmpty(search))
                 query = query.Where(t => t.Title.Contains(search) || t.Description.Contains(search));
 
             return await query.OrderByDescending(t => t.CreatedAt).ToListAsync();
-        }
-
-        public async Task<IEnumerable<Ticket>> GetByClientIdAsync(Guid clientId)
-        {
-            return await _context.Tickets
-                .Include(t => t.Category)
-                .Include(t => t.Client)
-                .Include(t => t.Operator)
-                .Where(t => t.ClientId == clientId)
-                .ToListAsync();
         }
 
         public async Task<Ticket?> GetWithDetailsByIdAsync(Guid id)
@@ -81,10 +107,21 @@ namespace Infrastructure.Repositories
         public async Task<IEnumerable<TicketHistory>> GetHistoryByTicketIdAsync(Guid ticketId)
         {
             return await _context.TicketHistories
-                .Where(h => h.TicketId == ticketId)
                 .Include(h => h.ChangedBy)
+                .Where(h => h.TicketId == ticketId)
                 .OrderBy(h => h.ChangedAt)
                 .ToListAsync();
+        }
+
+        public async Task<Ticket?> GetTicketWithDetailsAsync(Guid id)
+        {
+            return await _context.Tickets
+                .Include(t => t.Category)
+                .Include(t => t.Client)
+                .Include(t => t.Operator)
+                .Include(t => t.Comments)
+                    .ThenInclude(c => c.Author)
+                .FirstOrDefaultAsync(t => t.Id == id);
         }
     }
 }

@@ -37,19 +37,34 @@ namespace HelpDesk.Controllers
         }
 
         [HttpGet("my")]
-        public async Task<IActionResult> GetMyTickets()
+        public async Task<IActionResult> GetMyTickets([FromQuery] TicketFilterDto filter)
         {
             var userId = _currentUser.GetCurrentUserId(User);
-            var result = await _service.GetClientTicketsAsync(userId);
+            var result = await _service.GetClientTicketsAsync(userId, filter);
 
             return Ok(result.Data);
         }
 
-        [HttpGet]
+        [HttpGet("all")]
         [Authorize(Roles = "Operator, Admin")] 
         public async Task<IActionResult> GetAll([FromQuery] TicketFilterDto filter)
         {
             var result = await _service.GetAllAsync(filter);
+            return Ok(result.Data);
+        }
+
+        [HttpGet("{id}")]
+        public async Task<IActionResult> GetTicketDetails(Guid id)
+        {
+            var userId = _userHelper.GetCurrentUserId(User);
+            var roleStr = User.FindFirst(ClaimTypes.Role)?.Value;
+            Enum.TryParse<UserRole>(roleStr, out var userRole);
+
+            var result = await _service.GetTicketDetailsAsync(id, userId, userRole);
+
+            if (!result.Success)
+                return NotFound(new { error = result.Error });
+
             return Ok(result.Data);
         }
 
@@ -83,7 +98,6 @@ namespace HelpDesk.Controllers
         }
 
         [HttpGet("{id}/history")]
-        [Authorize] // Доступно и клиенту (своих), и оператору
         public async Task<IActionResult> GetHistory(Guid id)
         {
             var userId = _userHelper.GetCurrentUserId(User);
